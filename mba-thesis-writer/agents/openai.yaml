@@ -1,0 +1,4 @@
+interface:
+  display_name: "MBA论文研究与写作"
+  short_description: "独立完成MBA论文研究、证据筛选、图表制作、引用复核与Word定稿"
+  default_prompt: "使用 $mba-thesis-writer，依据我的开题报告、研究材料和学校模板完成MBA论文研究与写作。"

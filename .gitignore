@@ -1,0 +1,6 @@
+# Local verification and generated artifacts
+audit/
+__pycache__/
+*.pyc
+*.tmp
+*.log

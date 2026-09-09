@@ -1,0 +1,30 @@
+{
+  "name": "mba-thesis-writer",
+  "version": "1.0.0",
+  "release_date": "2026-09-09",
+  "entrypoint": "SKILL.md",
+  "project_schema_version": 1,
+  "core_runtime": "agent able to read Markdown and referenced resources",
+  "optional_python": ">=3.10",
+  "optional_docx": ">=1.1.2,<2",
+  "tested_python": "3.12",
+  "tested_python_docx": "1.2.0",
+  "platform_tested": [
+    "Windows"
+  ],
+  "platform_not_executed": [
+    "Linux",
+    "macOS"
+  ],
+  "citation_baseline": {
+    "number": "GB/T 7714-2025",
+    "effective_on": "2026-07-01",
+    "verified_on": "2026-09-09",
+    "reverify_each_project": true
+  },
+  "optional_vendor_metadata": [
+    "agents/openai.yaml"
+  ],
+  "render_validation": "Representative synthetic table sample using Microsoft Word 16.0; not a complete thesis",
+  "scope": "Portable instruction/resource package; individual harness discovery, tools and permissions remain environment-specific"
+}

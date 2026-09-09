@@ -1,0 +1,12 @@
+{
+  "profile_id": "ustc-user-template-2026",
+  "authority": "explicit_template_instructions",
+  "verified_on": "2026-09-09",
+  "citation": {"policy": "latest_effective_chinese_national_standard", "verified_baseline": "GB/T 7714-2025", "effective_on": "2026-07-01"},
+  "page": {"width_cm": 21, "height_cm": 29.7, "top_cm": 2.54, "bottom_cm": 2.54, "left_cm": 3.17, "right_cm": 3.17, "gutter_cm": 0, "mirror": true, "header_cm": 1.5, "footer_cm": 1.75},
+  "body": {"east_asia": "宋体", "latin": "Times New Roman", "size_pt": 12, "line_pt": 20, "before_pt": 0, "after_pt": 0, "first_line_chars": 2},
+  "headings": [{"level": 1, "size_pt": 16, "line": "single", "before_pt": 24, "after_pt": 18}, {"level": 2, "size_pt": 14, "line_pt": 20, "before_pt": 24, "after_pt": 6}, {"level": 3, "size_pt": 13, "line_pt": 20, "before_pt": 12, "after_pt": 6}],
+  "table": {"east_asia": "宋体", "latin": "Times New Roman", "size_pt": 11, "line": "single", "before_pt": 3, "after_pt": 3, "repeat_header": true, "caption_before_pt": 6, "caption_after_pt": 0, "note_before_pt": 6, "note_after_pt": 0, "surrounding_blank_pt": 10, "borders_required_by_template": null},
+  "bibliography": {"size_pt": 10.5, "line_pt": 20, "before_pt": 0, "after_pt": 0},
+  "visual_verification": "required_for_each_generated_thesis"
+}

@@ -1,0 +1,28 @@
+{
+  "algorithm": "sha256",
+  "excludes": [
+    "manifest.json"
+  ],
+  "files": {
+    "agents/openai.yaml": "03663182be2aa6a4d366ccbccb6a546fecca38b8a41f3b84712bac5c9b9c273c",
+    "assets/mba-requirements-2024.pdf": "57dbc5bc6e940abefe0378649f2ca29c1fdc6237efcc3a230b5d5ece035316b8",
+    "assets/ustc-format.json": "f70225bba48dbdb4f254bcf1e38d5555ecf358b6187fe9ee7a0b635690bcecff",
+    "assets/ustc-thesis-template.docx": "f5bfa013bb82abf6a4fd758da013001d36af4b8c5f651daa237f0c625b31848c",
+    "baseline.json": "99d50d2a25ebdfe9f070a7d71cda12c5e91d9b416ea050f202c1372ba9a962a2",
+    "README.md": "cb729d2271b4892313fe80722f8033dccb1ccef9e79ed91851270e66d6a5a05d",
+    "references/evidence-and-citations.md": "8799030dd3025566f91ff1cae6ff04c1a31d929453805c76bde34abafc1d7f7e",
+    "references/national-requirements.md": "c6571312f3b4d0738441063cf9216549528b0ad2083b9af4e615239c4eb9aeff",
+    "references/project-schema.md": "3b0a3e3bb8eba7e09ee7c7215adcc8d8c21ee1752960114cd57521d63ab806b3",
+    "references/research-design.md": "6cf31ca6216f6f298e4a76555de325f4d2e5cd2ec0667837ad89310e793e5c1d",
+    "references/ustc-format.md": "d44cf8ec1d2265677e10b6f2bcfe4220db10a201b121a4d7706688470ce309ef",
+    "references/word-and-tables.md": "c319ddbbd12bdd803ba94fe154f1db9da67bf4216bc120aa05a23b85fb372c02",
+    "references/writing-and-quality.md": "0c414863887d02ee1abd703126197301376be3239bf097a66d48a3fbc3844e15",
+    "requirements-docx.txt": "57fd12c7e75b9e278961617547449098ee6f961d4f6c334d0675955a3da966ad",
+    "scripts/audit_docx.py": "bf29166a4485ac016d14faa39d7203091d1d05ee9d6108cf2658e5f1403f474f",
+    "scripts/audit_project.py": "91fca479b9d21e2e5f16d0d29658348941b492fbf6a96be864039567ee2d1982",
+    "scripts/audit_text.py": "9df65a9ebc135587975d4fd6bd538a8409335c671c081a9e0e6eea450a43ad97",
+    "scripts/build_table.py": "cb7c99372491a001fd2f5bb35b8fead92b3a3ce295c1f1f3b98a9fdda87134ff",
+    "scripts/doctor.py": "b32f70874a70502e16efebe19ff93aabaa32b26d1b671b509a093f893d428105",
+    "SKILL.md": "c57983c51bf1a2daaf8de314f8266d9f2bbe9ba698512d08e422654aa3cd2cb8"
+  }
+}
