@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only OOXML risk checks; cannot certify pagination or inherited formatting."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -12,8 +13,8 @@ NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 W = "{" + NS["w"] + "}"
 
 
-def audit(path, profile=None):
-    report = {"errors": [], "warnings": [], "manual_checks": [
+def audit(path, profile=None, expected_headings=None):
+    report = {"input_sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "errors": [], "warnings": [], "manual_checks": [
         "Render and inspect every page: fonts, overflow, table continuation, headings, page numbers",
         "Check effective formatting through defaults, styles and direct overrides",
         "Verify numeric and author-year citations against the source/claim ledger",
@@ -36,7 +37,47 @@ def audit(path, profile=None):
     tables = root.findall(".//w:tbl", NS)
     report["counts"] = {"paragraphs_including_tables": len(paragraphs), "tables_including_layout_tables": len(tables), "sections": len(root.findall(".//w:sectPr", NS))}
     combined = "\n".join(texts)
-    for marker in [r"【待补充[^】]*】", r"\bTODO\b", r"【说明[：:]", r"【注[：:]", r"博士/硕士", r"学术/专业"]:
+    # Explicit user/project chapter expectations avoid imposing a fixed thesis outline.
+    style_map = {s.get(W + "styleId"): s for s in styles.findall("w:style", NS)}
+    def heading_level(paragraph):
+        direct = paragraph.find("w:pPr/w:outlineLvl", NS)
+        if direct is not None:
+            value = direct.get(W + "val", "9")
+            return int(value) if value.isdigit() and int(value) < 9 else None
+        selected = paragraph.find("w:pPr/w:pStyle", NS)
+        sid = selected.get(W + "val") if selected is not None else None
+        seen_styles = set()
+        while sid and sid not in seen_styles:
+            seen_styles.add(sid)
+            style = style_map.get(sid)
+            if style is None:
+                break
+            outline = style.find("w:pPr/w:outlineLvl", NS)
+            if outline is not None:
+                value = outline.get(W + "val", "9")
+                return int(value) if value.isdigit() and int(value) < 9 else None
+            parent = style.find("w:basedOn", NS)
+            sid = parent.get(W + "val") if parent is not None else None
+        return None
+    levels = [heading_level(p) for p in paragraphs]
+    paragraph_texts = ["".join(t.text or "" for t in p.findall(".//w:t", NS)).strip() for p in paragraphs]
+    coverage = []
+    for title in expected_headings or []:
+        matches = [i for i, text in enumerate(paragraph_texts) if text == title and levels[i] is not None]
+        if len(matches) != 1:
+            report["errors"].append(f"Expected heading not uniquely located as an outline heading: {title}")
+            coverage.append({"heading": title, "status": "missing_or_ambiguous"})
+            continue
+        start = matches[0]
+        end = next((i for i in range(start + 1, len(paragraphs)) if levels[i] is not None and levels[i] <= levels[start]), len(paragraphs))
+        size = sum(len(re.sub(r"\s+", "", paragraph_texts[i])) for i in range(start + 1, end) if levels[i] is None)
+        coverage.append({"heading": title, "paragraph": start + 1, "non_heading_characters": size,
+                         "status": "text_present" if size else "empty"})
+        if not size:
+            report["errors"].append(f"Expected chapter has no non-heading text: {title}")
+    report["chapter_coverage"] = coverage
+    report["manual_checks"].append("Chapter coverage is only a text-presence check, not evidence or analytical-depth validation; inspect image-only chapters manually")
+    for marker in [r"【待补充[^】]*】", r"\bTODO\b", r"【说明[：:]", r"【注[：:]", r"博士/硕士", r"学术/专业", r"此处(?:补充|填写|插入)", r"待(?:补充|填写|核实|完善)(?:原因|数据|结果|内容|访谈|问卷)?", r"临时演示", r"待真实数据替换"]:
         matches = re.findall(marker, combined)
         if matches:
             report["warnings"].append({"template_or_pending_text": marker, "count": len(matches)})
@@ -126,13 +167,16 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path)
     p.add_argument("--profile", type=Path)
+    p.add_argument("--expect-heading", action="append", default=[], help="Exact displayed paragraph text of an expected outline heading; repeat per chapter")
     p.add_argument("--out", type=Path)
     args = p.parse_args()
     if args.out and args.out.resolve() == args.input.resolve():
         p.error("Output must not overwrite input")
+    if args.out and args.profile and args.out.resolve() == args.profile.resolve():
+        p.error("Output must not overwrite the format profile")
     try:
         profile = json.loads(args.profile.read_text(encoding="utf-8-sig")) if args.profile else None
-        result = audit(args.input, profile)
+        result = audit(args.input, profile, args.expect_heading)
         text = json.dumps(result, ensure_ascii=False, indent=2)
         if args.out:
             args.out.write_text(text, encoding="utf-8")

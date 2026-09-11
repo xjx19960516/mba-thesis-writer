@@ -1,9 +1,6 @@
-* text=auto
-*.md text working-tree-encoding=UTF-8
-*.json text working-tree-encoding=UTF-8
-*.py text working-tree-encoding=UTF-8
-*.yaml text working-tree-encoding=UTF-8
-*.txt text working-tree-encoding=UTF-8
+* text=auto eol=lf
+# Exact bytes are required by the skill's manifest.json.
+mba-thesis-writer/** -text
 *.pdf binary
 *.docx binary
 *.zip binary

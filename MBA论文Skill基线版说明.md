@@ -1,6 +1,6 @@
 # MBA论文Skill基线版 1.0.0
 
-2026年9月9日完成实际验证、问题修复和基线封装。正式包为 [mba-thesis-writer-1.0.0-baseline.zip](mba-thesis-writer-1.0.0-baseline.zip)，解压后保留完整目录。通用安装、普通文字调用、可选工具和能力适配见 [安装说明](mba-thesis-writer/README.md)。旧的 `mba-thesis-writer-installable.zip` 与本基线包内容一致。
+本页保留1.0.0的历史验证说明，当前整合发布版见 [1.3.3说明](MBA论文Skill全文表达复核说明-1.3.3.md)，此前独立发布说明见 [1.3.2说明](MBA论文Skill独立发布说明-1.3.2.md)，此前正文与补充说明见 [1.3.1说明](MBA论文Skill正文与补充说明整合版-1.3.1.md)，此前工作稿能力见 [1.3.0说明](MBA论文Skill工作稿更新说明-1.3.0.md)，此前问卷能力更新见 [1.2.0说明](MBA论文Skill问卷能力更新说明-1.2.0.md)，此前发布审阅见 [1.1.1说明](MBA论文Skill发布审阅说明-1.1.1.md)，全文流程更新见 [1.1.0完整论文优化说明](MBA论文Skill完整论文优化说明-1.1.0.md)，此前更新见 [1.0.2整合优化说明](MBA论文Skill整合优化说明-1.0.2.md)和 [1.0.1优化复核说明](MBA论文Skill优化复核说明-1.0.1.md)。2026年9月9日完成的 [mba-thesis-writer-1.0.0-baseline.zip](mba-thesis-writer-1.0.0-baseline.zip)继续保留；通用文件名 `mba-thesis-writer-installable.zip` 随最新版本更新。安装与运行方法见 [安装说明](mba-thesis-writer/README.md)。
 
 ## 本轮完成的优化
 

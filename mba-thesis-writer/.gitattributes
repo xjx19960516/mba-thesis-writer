@@ -1,0 +1,2 @@
+# Preserve exact packaged bytes so Git checkouts match manifest.json on every OS.
+* -text

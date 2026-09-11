@@ -1,7 +1,7 @@
 {
   "name": "mba-thesis-writer",
-  "version": "1.0.0",
-  "release_date": "2026-09-09",
+  "version": "1.3.3",
+  "release_date": "2026-09-11",
   "entrypoint": "SKILL.md",
   "project_schema_version": 1,
   "core_runtime": "agent able to read Markdown and referenced resources",
@@ -19,7 +19,8 @@
   "citation_baseline": {
     "number": "GB/T 7714-2025",
     "effective_on": "2026-07-01",
-    "verified_on": "2026-09-09",
+    "verified_on": "2026-09-10",
+    "official_url": "https://std.samr.gov.cn/gb/search/gbDetailed?id=w3O2P1Odh2Q%3D&mode=p",
     "reverify_each_project": true
   },
   "optional_vendor_metadata": [

@@ -21,6 +21,17 @@ def audit(data):
         result["errors" if hard else "warnings"].append(msg)
     def filled(value):
         return isinstance(value, str) and bool(value.strip())
+    def past_date(value, loc):
+        try:
+            if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                raise ValueError()
+            parsed = dt.date.fromisoformat(value)
+            if parsed > dt.date.today():
+                raise ValueError()
+            return parsed
+        except ValueError:
+            issue(f"{loc}: valid ISO YYYY-MM-DD date no later than today required")
+            return None
     def enum(obj, key, choices, loc, required=True):
         if not required and obj.get(key) is None:
             return
@@ -48,6 +59,14 @@ def audit(data):
     enum(project, "thesis_type", {"topic_research", "case_descriptive", "case_problem", "other"}, "project", False)
     enum(project, "citation_style", {"numeric", "author_year"}, "project", False)
     final = project.get("stage") == "submission_candidate"
+    temporary = project.get("contains_temporary_results")
+    if temporary is not None and type(temporary) is not bool:
+        issue("project.contains_temporary_results: boolean required when provided")
+    if temporary is True:
+        issue("project.contains_temporary_results: replace or resolve temporary results before submission", final)
+    revision = project.get("content_revision")
+    if revision is not None and not filled(revision):
+        issue("project.content_revision: nonempty text required when provided")
     if final:
         require(project, ["thesis_type", "citation_style", "citation_standard", "template", "research_period", "delivery_variant"], "project")
         enum(project, "delivery_variant", {"review", "archive"}, "project")
@@ -119,6 +138,7 @@ def audit(data):
         enum(source, "access_scope", {"metadata_only", "abstract", "full_text", "dataset"}, sid)
         if source.get("eligibility") == "accepted":
             require(source, ["title", "publisher", "origin", "accessed_on", "locator"], sid)
+            past_date(source.get("accessed_on"), f"{sid}.accessed_on")
             if source.get("verification") != "verified":
                 issue(f"{sid}: accepted source is unverified")
             if source.get("kind") == "third_party":
@@ -227,7 +247,7 @@ def audit(data):
     for did, display in collections["displays"].items():
         enum(display, "kind", {"table", "figure"}, did)
         enum(display, "status", {"planned", "included"}, did, False)
-        display_state = display.get("status", "included")
+        display_state = display.get("status") or "included"
         require(display, ["number", "title"], did)
         if display_state == "included" or final:
             require(display, ["first_mention"], did)
@@ -250,6 +270,20 @@ def audit(data):
         for flag in ["calculation_checked", "format_checked"]:
             if flag == "calculation_checked" and display.get(flag) == "not_applicable":
                 require(display, ["calculation_note"], did)
+                pending = list(data_ids)
+                visited_data = set()
+                while pending:
+                    data_id = pending.pop()
+                    if data_id in visited_data or data_id not in nums:
+                        continue
+                    visited_data.add(data_id)
+                    datum = nums[data_id]
+                    if datum.get("status") == "calculated" or type(datum.get("value")) in (int, float):
+                        issue(f"{did}.calculation_checked: numeric or calculated data {data_id} requires numeric review, not not_applicable")
+                        break
+                    parents = datum.get("input_ids", [])
+                    if isinstance(parents, list):
+                        pending.extend(x for x in parents if isinstance(x, str))
                 continue
             if flag in display and type(display[flag]) is not bool:
                 issue(f"{did}.{flag}: boolean required")
@@ -275,8 +309,8 @@ def audit(data):
         for sid, source in src.items():
             if source.get("used_in_bibliography") is True and sid not in used_source_ids:
                 issue(f"{sid}: bibliography entry has no substantive use in claims/questions/displays")
-            if sid in used_source_ids and source.get("kind") == "academic" and source.get("used_in_bibliography") is not True:
-                issue(f"{sid}: used academic evidence is missing from the bibliography")
+            if sid in used_source_ids and source.get("kind") in {"official", "academic", "third_party", "auxiliary"} and source.get("used_in_bibliography") is not True:
+                issue(f"{sid}: used public evidence is missing from the bibliography")
         qa = data.get("qa", {})
         if not isinstance(qa, dict):
             qa = {}
@@ -287,6 +321,8 @@ def audit(data):
             allowed = {"pass", "not_applicable"} if key == "calculations" and not nums else {"pass"}
             if record.get("status") not in allowed or not filled(record.get("evidence")):
                 issue(f"qa.{key}: completed review and evidence required")
+            if filled(revision) and record.get("reviewed_revision") != revision:
+                issue(f"qa.{key}.reviewed_revision: must cover current content_revision {revision}")
             if key == "visual_pages":
                 total = record.get("total_pages")
                 pages = record.get("checked_pages")

@@ -44,8 +44,9 @@
 - `qualification`：第三方必需，包含 `traceable_origin, period, population, definition, method, research_fit`。每项写实际说明，不能只填 true。原始机构单独发布的官方数据无需伪造第二出处；交叉核验另记 `corroboration`（独立原始来源 ID、差异和处理结论）。
 - `claims[]`：`id, text, kind, evidence_ids, locator, section, status, reviewer_note`。`kind` 为 factual / interpretation / proposal / scenario；`status` 为 supported / pending / withdrawn。解释和建议也应写依据与边界。`locator` 是证据的具体内容定位；实际语义支撑由研究者复核，脚本只查结构。
 - `data_items[]`：`id, indicator, value, unit, period, definition, population, source_ids, status`；衍生量另加 `input_ids, formula, analysis_path`；`status` 为 observed / calculated / scenario / pending。`value` 可为有限数值、非空文本或待取得时的null，不能用布尔、NaN或Infinity；情景值不得标observed。pending条目可连接待核验候选来源，脚本提示但不将其视为已验证事实。
-- `displays[]`：`id, kind, number, title, research_question_id, data_ids, source_ids, first_mention, note, calculation_checked, format_checked`；可加`status`为planned / included，省略默认included。`kind`为table / figure；编号如`3.1`或附录`A.1`，与稳定ID分开。planned为研究计划，可暂缺实际数据和正文首次引用；纳入正文后必须有合格证据。两个checked字段用真实布尔值，不用字符串“true”；完全没有数值计算的定性表/图可将calculation_checked设为not_applicable，并用calculation_note说明原因，避免虚填数值复核。
+- `displays[]`：`id, kind, number, title, research_question_id, data_ids, source_ids, first_mention, note, calculation_checked, format_checked`；可加`status`为planned / included，省略或null按included检查；未采用图表须明确标planned。`kind`为table / figure；编号如`3.1`或附录`A.1`，与稳定ID分开。planned为研究计划，可暂缺实际数据和正文首次引用；纳入正文后必须有合格证据。两个checked字段用真实布尔值，不用字符串“true”；完全没有数值核验的定性表/图可将calculation_checked设为not_applicable，并用calculation_note说明原因。图表关联数值或派生数据时应完成相应转录/计算复核，不能以not_applicable跳过；脚本沿数据依赖检查明确数值和calculated记录，字符串形式的数值及表内实际内容仍需审读。
 - `tasks[]`：`id, need, purpose, owner, status, blocking`；任务状态为 open / done / waived；waived另存reason。只有具体理由和可接受替代路径才能 waived，不能把尚未取得的研究结果标完成。
+- 补充材料与修订任务可增加`draft_locations, required_inputs, replacement_rule, acceptance_criteria`及受影响ID，按 [独立补充说明](manuscript-and-supplement.md)整理给用户。位置优先用章/节、段落首句和表图编号，页码随稿件版本更新；正文不需要保留任务占位语。这些扩展字段用于记录，当前脚本不校验它们的完整性。
 - `qa`：`evidence_semantics, calculations, citations, repetition, academic_style, consistency, docx_structure, visual_pages`。每项为 `{status: pass|pending|not_applicable, evidence: 实际审查记录路径或说明}`。`visual_pages` 另记 rendered_file、checked_pages、total_pages。另记录外部查重报告的来源、日期、覆盖范围；没有报告就不填写查重率。
 
 ## 状态只描述已经完成的工作
@@ -54,8 +55,18 @@
 
 数据更正后用稳定 ID 找到关联的论断、图表、章节、摘要和结论，只重做受影响的分析与检查。跨会话继续时先读项目记录与未完成任务，避免重新选题。
 
+## 修改稿与质检版本
+
+先写工作稿、后补真实数据时，可设`project.contains_temporary_results=true`，按 [临时结果工作稿](temporary-results-workflow.md)管理替换。字段可省略以兼容旧项目，填写时必须为布尔值；true在草稿中为警告，在submission_candidate中为错误。脚本不自动扫描正文来推断该字段，设false需有实际替换和复核依据。
+
+多轮修改时可增加 `project.content_revision`，写本项目稳定的正文/数据快照标识，如 `draft-03`；它与技能的软件版本分别管理。各项QA另加 `reviewed_revision`，记录该检查实际覆盖的内容版本。
+
+启用内容版本记录后，送审候选稿要求所有QA与当前 `content_revision` 一致。修改数字、分析、章节或排版后，把受影响QA改为pending并重查；未受影响的检查可以在比对后沿用，在evidence说明未受影响的范围及比较依据，再登记当前版本。新增字段是可选的，旧项目不被要求伪造历史记录；只填版本字符串也不能代替审查。
+
+视觉QA应记录实际输入DOCX、渲染PDF或页面文件，以及核验日期。完整论文任务按 [全文执行流程](full-thesis-workflow.md)登记文件哈希；环境无法计算时明确缺失，不能伪造。可在相关QA项中增加 `input_file, input_sha256, rendered_sha256, checked_on`，沿用 `rendered_file` 与实际页码；这些是记录字段，项目审计不验证其外部文件内容。内容变动可能导致后续页码、目录和表格分页连锁变化，需重新渲染后确认影响范围。引用/结构脚本自动记录所读输入的哈希，但不证明已完成视觉审查，也不替用户重置QA。
+
 ## 检查范围
 
-脚本检查已回答问题、已支持论断及已纳入图表的证据状态，沿衍生数据回查来源；证据ID存在不等于可用。送审候选至少应有真实已支持的论断，不能用全部withdrawn代替研究结果。参考文献键应唯一，学术证据使用需与文后登记对应，文后条目应有研究中的实质使用位置；正文实际引用字符、题录各字段和现行国标细节仍需结合论文人工检查。
+脚本检查已回答问题、已支持论断及已纳入图表的证据状态，沿衍生数据回查来源；证据ID存在不等于可用。accepted来源的accessed_on应为不晚于当前日期的真实ISO日期。送审候选至少应有真实已支持的论断，不能用全部withdrawn代替研究结果。参考文献键应唯一；用于实质论断、研究问题或已纳入图表的公开证据（official、academic、third_party、auxiliary）在送审候选稿中与文后登记对应，内部访谈/业务材料按实际资料标识和适用附录管理。文后条目应有研究中的实质使用位置；正文实际引用字符、题录各字段和现行国标细节仍需结合论文人工检查。
 
 `standard_verification.official_url`指向国家市场监督管理总局体系的实际官方标准记录（如std.samr.gov.cn或openstd.samr.gov.cn）；脚本只校验域名/日期/版本记录一致性，实时状态要实际打开核对。草稿阶段可只记录本次需要的内容，待核验来源与研究任务不被冒充正式证据，也不因此阻止不受影响的写作。

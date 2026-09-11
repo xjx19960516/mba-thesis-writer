@@ -1,0 +1,29 @@
+{
+  "data_origin": "SIMULATED",
+  "purpose": "方法演示：设定情景甲的评分高于情景乙，用于检验工作稿表格和分析流程；不代表现实调查。",
+  "sample_size": 12,
+  "seed": 42,
+  "questions": [
+    {
+      "id": "G",
+      "text": "演示分组",
+      "kind": "single",
+      "options": [{"value": "A", "label": "情景甲"}, {"value": "B", "label": "情景乙"}],
+      "counts": [6, 6]
+    },
+    {
+      "id": "Q1",
+      "text": "演示评分题（使用时替换为实际问卷题项）",
+      "kind": "likert",
+      "options": [
+        {"value": 1, "label": "1分"},
+        {"value": 2, "label": "2分"},
+        {"value": 3, "label": "3分"},
+        {"value": 4, "label": "4分"},
+        {"value": 5, "label": "5分"}
+      ],
+      "condition_on": "G",
+      "counts_by_group": {"A": [0, 0, 1, 2, 3], "B": [2, 2, 1, 1, 0]}
+    }
+  ]
+}
