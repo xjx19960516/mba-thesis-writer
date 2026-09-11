@@ -2,7 +2,7 @@
 
 ## 安装与调用
 
-公开仓库为 [xjx19960516/mba-thesis-writer](https://github.com/xjx19960516/mba-thesis-writer)。仓库主分支、历史版本安装包和本机安装副本可能处于不同版本，下载后先读取所选目录的 `baseline.json`。以实际文件为准，不能仅从仓库标题判断版本。
+公开仓库为 [xjx19960516/mba-thesis-writer](https://github.com/xjx19960516/mba-thesis-writer)。仓库主分支只分发当前最终版，下载入口以仓库README为准。本机已有副本可能较旧，下载后读取技能目录的 `baseline.json`，核对其版本与本次安装包一致。
 
 从仓库克隆或下载整个仓库ZIP时，技能位于仓库内层的 `mba-thesis-writer/`；下载 `mba-thesis-writer-<版本>-baseline.zip` 时，解压后的单一 `mba-thesis-writer/` 就是技能根目录。定位条件是同一目录下同时有 `SKILL.md`、`baseline.json`、`manifest.json`，而不是根据同名文件夹猜层级。保留随包 `.gitattributes`，避免Git自动转换换行而破坏逐文件校验。
 
@@ -16,7 +16,7 @@
 
 ## 可直接交给AI的下载与调用提示词
 
-> 请从 https://github.com/xjx19960516/mba-thesis-writer 下载完整技能。若我指定版本，选择该版本安装包并核对同名SHA256文件；否则读取仓库内技能的baseline.json，说明实际取得的版本。定位同时包含SKILL.md、baseline.json和manifest.json的技能根目录，保留全部文件，包括隐藏文件。先阅读README.md和SKILL.md。当前环境支持技能目录时按其官方安装机制安装；不支持时放到可读工作区，直接按本入口及按需参考执行。存在旧版本时先核对本地修改并保留可恢复副本，不混合不同版本的文件。有可用Python时运行scripts/doctor.py --self-test；依赖缺失时按README区分可选能力，使用环境允许的工具补齐所需能力。没有Python则如实记录未运行自检；校验失败时核对版本及下载完整性，不重写清单来掩盖差异。告诉我实际版本、技能位置、验证结果和调用方式。我的论文任务是：【填写任务】，资料与结果保存在独立项目目录：【填写目录】。
+> 请从 https://github.com/xjx19960516/mba-thesis-writer 下载仓库README列出的当前最终版完整技能及同名SHA256文件，核对安装包校验值和技能baseline.json中的实际版本。定位同时包含SKILL.md、baseline.json和manifest.json的技能根目录，保留全部文件，包括隐藏文件。先阅读README.md和SKILL.md。当前环境支持技能目录时按其官方安装机制安装；不支持时放到可读工作区，直接按本入口及按需参考执行。存在旧版本时先核对本地修改并保留可恢复副本，不混合不同版本的文件。有可用Python时运行scripts/doctor.py --self-test；依赖缺失时按README区分可选能力，使用环境允许的工具补齐所需能力。没有Python则如实记录未运行自检；校验失败时核对版本及下载完整性，不重写清单来掩盖差异。告诉我实际版本、技能位置、验证结果和调用方式。我的论文任务是：【填写任务】，资料与结果保存在独立项目目录：【填写目录】。
 
 纯对话环境先确认能读取完整资源；交付Word所需的文档处理由可用工具承接。环境适配信息写入交付说明。
 
