@@ -13,7 +13,7 @@ NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 W = "{" + NS["w"] + "}"
 BRACKET = re.compile(r"\[\s*(\d+(?:\s*[,，、;；\-–—]\s*\d+)*)\s*\]")
 ENTRY = re.compile(r"^\s*\[\s*([1-9]\d*)\s*\]\s*(.*)$")
-END = re.compile(r"^(?:致谢|附录(?:\s*[A-Z0-9一二三四五六七八九十].*)?|acknowledgements?|acknowledgments?|appendix(?:\s+[A-Z](?:\s.*)?)?)$", re.I)
+END = re.compile(r"^(?:致\s*谢|附\s*录(?:\s*[A-Z0-9一二三四五六七八九十].*)?|acknowledgements?|acknowledgments?|appendix(?:\s+[A-Z](?:\s.*)?)?)$", re.I)
 
 
 def normalize(text):
@@ -65,16 +65,19 @@ def read_paragraphs(path):
         fence = None
         for index, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
             if path.suffix.lower() != ".txt":
-                marker = re.match(r"^\s*(`{3,}|~{3,})", line)
-                if marker:
-                    if fence is None:
-                        fence = marker.group(1)[0]
-                    elif marker.group(1)[0] == fence:
+                marker = re.match(r"^\s*(`{3,}|~{3,})(.*)$", line)
+                if fence is not None:
+                    if (marker and marker.group(1)[0] == fence[0]
+                            and len(marker.group(1)) >= len(fence)
+                            and not marker.group(2).strip()):
                         fence = None
                     continue
-                if fence:
+                if marker and (marker.group(1)[0] != "`" or "`" not in marker.group(2)):
+                    fence = marker.group(1)
                     continue
-                line = re.sub(r"^\s*#{1,6}\s+", "", line)
+                heading = re.match(r"^\s*#{1,6}(?:[ \t]+|$)(.*)$", line)
+                if heading:
+                    line = re.sub(r"[ \t]+#+[ \t]*$", "", heading.group(1))
             rows.append({"text": normalize(line), "location": f"line:{index}", "auto_numbered": False})
     else:
         raise ValueError("Input must be DOCX, TXT or Markdown")

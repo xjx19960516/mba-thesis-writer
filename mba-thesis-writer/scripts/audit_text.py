@@ -2,6 +2,7 @@
 """Local paragraph similarity and style review hints; not a plagiarism/AI score."""
 import argparse
 from difflib import SequenceMatcher
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -92,13 +93,17 @@ def main():
     args = p.parse_args()
     if args.min_chars < 1 or not 0 < args.threshold <= 1:
         p.error("min-chars >= 1 and 0 < threshold <= 1 required")
-    if args.out and args.out.resolve() == args.input.resolve():
-        p.error("Output must not overwrite input")
+    if args.out and (args.out.exists() or args.out.resolve() == args.input.resolve()):
+        p.error("Choose a new output report; input and existing files must remain unchanged")
     try:
         result = analyze(paragraphs(args.input), args.min_chars, args.threshold)
+        result.update(input=str(args.input.resolve()),
+                      input_sha256=hashlib.sha256(args.input.read_bytes()).hexdigest(),
+                      settings={"min_chars": args.min_chars, "threshold": args.threshold})
         text = json.dumps(result, ensure_ascii=False, indent=2)
         if args.out:
-            args.out.write_text(text, encoding="utf-8")
+            with args.out.open("x", encoding="utf-8") as handle:
+                handle.write(text)
         print(text)
         return 0
     except (OSError, ValueError, zipfile.BadZipFile, KeyError, ET.ParseError) as exc:
