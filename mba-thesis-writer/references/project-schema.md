@@ -8,7 +8,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": {
     "title": "研究题目",
     "mode": "proposal_to_thesis",
@@ -38,7 +38,7 @@
 - `proposal_baseline`：保存题目、对象、问题、目标、主理论、核心方法、技术路线、主体目录、预期成果、原开题文件和定位。无开题时为空。
 - `project.mode` 为 topic_to_thesis / proposal_to_thesis / thesis_revision / finalization；`thesis_type` 为 topic_research / case_descriptive / case_problem / other（other另存培养单位认可依据type_authority）。`delivery_variant` 为 working / review / archive。`standard_verification` 每项目启动与定稿真实核验后填写，示例日期不照抄；脚本只查记录一致性，不联网判断“最新”。
 - `changes[]`：`id, before, after, reason, impact, substantive, authorization, status`。status为proposed / approved / implemented / declined；substantive为布尔。`authorization` 记录用户原话所在回合/文件或既有授权范围；日常编辑不必逐句登记。
-- `research_questions[]`：`id, question, unit, inference_goal, method, evidence_ids, chapters, output, status`。`evidence_ids` 指向 sources 或 data_items；`status` 为 planned / in_progress / answered。
+- `research_questions[]`：`id, question, unit, inference_goal, method, evidence_ids, chapters, output, status`。`evidence_ids` 指向 sources 或 data_items；`status` 为 planned / in_progress / answered。`output` 说明拟形成的成果；answered另填`answer`（由分析形成的实际答案）和`answer_location`（章/节、段落锚点或图表后的论证位置）。可加`answer_claim_ids`连接claims；填写时已回答问题所关联的论断需为supported，实际语义对应在审读中核对。
 - `sources[]`：`id, kind, title, publisher, origin, accessed_on, access_scope, verification, eligibility, locator, qualification, used_in_bibliography, bibliography_key`。`kind` 为 official / academic / third_party / internal / auxiliary；`origin` 为正规原始 URL 或用户本地材料路径；`locator` 为实际页码/表号/段落/记录定位；题录另加 authors/year/container/doi 等真实字段。
 - `access_scope` 为 metadata_only / abstract / full_text / dataset；`verification` 为 verified / unverified；`eligibility` 为 accepted / reference_only / rejected。这些是不同维度，不把“第三方已交叉验证”另造一个与 accepted 重叠的状态。
 - `qualification`：第三方必需，包含 `traceable_origin, period, population, definition, method, research_fit`。每项写实际说明，不能只填 true。原始机构单独发布的官方数据无需伪造第二出处；交叉核验另记 `corroboration`（独立原始来源 ID、差异和处理结论）。
@@ -50,6 +50,8 @@
 - `qa`：`evidence_semantics, calculations, citations, repetition, academic_style, consistency, docx_structure, visual_pages`。每项为 `{status: pass|pending|not_applicable, evidence: 实际审查记录路径或说明}`。`visual_pages` 另记 rendered_file、checked_pages、total_pages。另记录外部查重报告的来源、日期、覆盖范围；没有报告就不填写查重率。
 
 ## 状态只描述已经完成的工作
+
+新项目采用schema_version=2，标answered时须有实际答案及正文定位。旧schema_version=1继续可读；缺少答案记录时给出具体补录提示，不用计划成果名称代替答案。依据现有正文补录后可将版本改为2，其他字段及稳定ID保持原值。小任务只记录实际涉及的研究问题。
 
 `research_draft` 允许存在待取数据；`research_ready` 表示关键研究路径与现有证据可执行；`full_draft` 表示全篇正文完成，但审计可能未完成；`review_ready` 表示可供导师审阅；`submission_candidate` 需全部相关质量检查完成、关键资料任务关闭、目标版本明确。脚本不会代替导师、学校或正式查重系统作出送审决定。
 

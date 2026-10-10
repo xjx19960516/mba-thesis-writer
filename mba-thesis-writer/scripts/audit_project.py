@@ -47,8 +47,9 @@ def audit(data):
         return result
     # Normalize invalid enums only on a private copy; never mutate caller data.
     data = copy.deepcopy(data)
-    if type(data.get("schema_version")) is not int or data.get("schema_version") != 1:
-        issue("schema_version must be 1")
+    schema_version = data.get("schema_version")
+    if type(schema_version) is not int or schema_version not in {1, 2}:
+        issue("schema_version must be 1 or 2")
     project = data.get("project", {})
     if not isinstance(project, dict):
         issue("project must be an object")
@@ -237,6 +238,16 @@ def audit(data):
         ids = refs(question, "evidence_ids", set(src) | set(nums), question.get("status") == "answered")
         if question.get("status") == "answered":
             check_evidence(rid, ids)
+            if schema_version == 2 or "answer" in question or "answer_location" in question:
+                require(question, ["answer", "answer_location"], rid)
+            else:
+                issue(f"{rid}: record the actual answer and answer_location; output alone identifies an intended product", False)
+        if "answer_claim_ids" in question:
+            answer_claims = refs(question, "answer_claim_ids", collections["claims"], question.get("status") == "answered")
+            if question.get("status") == "answered":
+                for cid in answer_claims:
+                    if cid in collections["claims"] and collections["claims"][cid].get("status") != "supported":
+                        issue(f"{rid}: answer claim {cid} is not supported")
         require(question, ["question", "unit", "inference_goal", "method", "output"], rid)
         chapters = question.get("chapters")
         if not isinstance(chapters, list) or not chapters or any(not filled(x) for x in chapters):

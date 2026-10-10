@@ -39,6 +39,19 @@ def audit(path, profile=None, expected_headings=None):
     combined = "\n".join(texts)
     # Explicit user/project chapter expectations avoid imposing a fixed thesis outline.
     style_map = {s.get(W + "styleId"): s for s in styles.findall("w:style", NS)}
+    parent_map = {child: parent for parent in root.iter() for child in parent}
+    def ancestors(element):
+        current = parent_map.get(element)
+        while current is not None:
+            yield current
+            current = parent_map.get(current)
+    def owned_elements(paragraph, tags):
+        # Text boxes contain nested paragraphs; count their text only once.
+        return [element for element in paragraph.iter() if element.tag in tags and
+                next((parent for parent in ancestors(element) if parent.tag == W + "p"), None) is paragraph]
+    paragraph_ancestors = [list(ancestors(p)) for p in paragraphs]
+    in_table = [any(parent.tag == W + "tbl" for parent in parents) for parents in paragraph_ancestors]
+    in_textbox = [any(parent.tag == W + "txbxContent" for parent in parents) for parents in paragraph_ancestors]
     def heading_level(paragraph):
         direct = paragraph.find("w:pPr/w:outlineLvl", NS)
         if direct is not None:
@@ -59,9 +72,64 @@ def audit(path, profile=None, expected_headings=None):
             parent = style.find("w:basedOn", NS)
             sid = parent.get(W + "val") if parent is not None else None
         return None
-    levels = [heading_level(p) for p in paragraphs]
-    paragraph_texts = ["".join(t.text or "" for t in p.findall(".//w:t", NS)).strip() for p in paragraphs]
+    levels = [heading_level(p) if not in_table[i] and not in_textbox[i] else None
+              for i, p in enumerate(paragraphs)]
+    paragraph_texts = ["".join(t.text or "" for t in owned_elements(p, {W + "t"})).strip()
+                       for p in paragraphs]
+    def is_caption(paragraph, text):
+        if re.match(r"^(?:续?表|续?图)\s*(?:\d+|[A-Z])(?:[.．\-－–]\d+)?(?:\s+|[：:])\S", text):
+            return True
+        selected = paragraph.find("w:pPr/w:pStyle", NS)
+        sid = selected.get(W + "val") if selected is not None else None
+        visited = set()
+        while sid and sid not in visited:
+            visited.add(sid)
+            style = style_map.get(sid)
+            if style is None:
+                break
+            name = style.find("w:name", NS)
+            if name is not None and name.get(W + "val", "").strip().lower() in {"caption", "题注"}:
+                return True
+            parent = style.find("w:basedOn", NS)
+            sid = parent.get(W + "val") if parent is not None else None
+        return False
+    def is_display_note(text):
+        return bool(re.match(r"^(?:资料来源|数据来源|来源|注|注释)\s*[：:]\s*\S", text))
+    roles = ["heading" if levels[i] is not None else "table" if in_table[i] else
+             "textbox" if in_textbox[i] else "caption" if is_caption(p, paragraph_texts[i]) else
+             "display_note" if is_display_note(paragraph_texts[i]) else "narrative"
+             for i, p in enumerate(paragraphs)]
+    characters = [len(re.sub(r"\s+", "", text)) for text in paragraph_texts]
+    object_tags = {W + "drawing", W + "pict", "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath"}
+    objects = [owned_elements(p, object_tags) for p in paragraphs]
+    def metrics(start, end):
+        indices = range(start, end)
+        result = {role + "_characters": sum(characters[i] for i in indices if roles[i] == role)
+                  for role in ["narrative", "table", "caption", "display_note", "textbox"]}
+        result["non_heading_characters"] = sum(result.values())
+        result["nonempty_narrative_paragraphs"] = sum(1 for i in indices if roles[i] == "narrative" and characters[i])
+        result["table_count"] = len({parent for i in indices for parent in paragraph_ancestors[i] if parent.tag == W + "tbl"})
+        result["figure_count"] = sum(1 for i in indices for element in objects[i] if element.tag in {W + "drawing", W + "pict"})
+        result["equation_count"] = sum(1 for i in indices for element in objects[i] if element.tag not in {W + "drawing", W + "pict"})
+        return result
+    def section_record(start):
+        end = next((i for i in range(start + 1, len(paragraphs))
+                    if levels[i] is not None and levels[i] <= levels[start]), len(paragraphs))
+        record = {"heading": paragraph_texts[start], "paragraph": start + 1,
+                  "end_paragraph": end, "outline_level": levels[start],
+                  "is_leaf": not any(levels[i] is not None for i in range(start + 1, end))}
+        record.update(metrics(start + 1, end))
+        has_content = bool(record["non_heading_characters"] or record["table_count"] or record["figure_count"] or record["equation_count"])
+        record["status"] = "text_present" if record["non_heading_characters"] else "content_present" if has_content else "empty"
+        record["coverage_state"] = "narrative_present" if record["narrative_characters"] else "nonprose_only" if has_content else "empty"
+        return record
+    section_records = {i: section_record(i) for i, level in enumerate(levels) if level is not None}
+    report["document_text_metrics"] = metrics(0, len(paragraphs))
+    report["document_text_metrics"]["character_count_definition"] = (
+        "Non-whitespace OOXML w:t characters in the main document, counted once per paragraph; "
+        "excludes heading text and does not represent the school's body-word-count definition")
     coverage = []
+    expected_indices = set()
     for title in expected_headings or []:
         matches = [i for i, text in enumerate(paragraph_texts) if text == title and levels[i] is not None]
         if len(matches) != 1:
@@ -69,14 +137,21 @@ def audit(path, profile=None, expected_headings=None):
             coverage.append({"heading": title, "status": "missing_or_ambiguous"})
             continue
         start = matches[0]
-        end = next((i for i in range(start + 1, len(paragraphs)) if levels[i] is not None and levels[i] <= levels[start]), len(paragraphs))
-        size = sum(len(re.sub(r"\s+", "", paragraph_texts[i])) for i in range(start + 1, end) if levels[i] is None)
-        coverage.append({"heading": title, "paragraph": start + 1, "non_heading_characters": size,
-                         "status": "text_present" if size else "empty"})
-        if not size:
-            report["errors"].append(f"Expected chapter has no non-heading text: {title}")
+        expected_indices.add(start)
+        record = dict(section_records[start])
+        coverage.append(record)
+        if record["coverage_state"] == "empty":
+            report["errors"].append(f"Expected section has no text, table, figure or equation: {title} (paragraph {start + 1})")
+        elif record["coverage_state"] == "nonprose_only":
+            report["warnings"].append({"section_without_narrative": title, "paragraph": start + 1,
+                                       "action": "Inspect whether its tables, captions, source notes, figures or equations need accompanying analysis for this section's purpose"})
     report["chapter_coverage"] = coverage
-    report["manual_checks"].append("Chapter coverage is only a text-presence check, not evidence or analytical-depth validation; inspect image-only chapters manually")
+    report["section_coverage"] = list(section_records.values())
+    for start, record in section_records.items():
+        if start not in expected_indices and record["outline_level"] > 0 and record["is_leaf"] and record["coverage_state"] == "empty":
+            report["warnings"].append({"empty_leaf_section": record["heading"], "paragraph": start + 1,
+                                       "action": "Check this subsection's intended analysis and complete or remove it as appropriate"})
+    report["manual_checks"].append("Coverage records describe text, tables and objects, not evidence or analytical depth; review each section against its research purpose and apply the school's word-count rules")
     for marker in [r"【待补充[^】]*】", r"\bTODO\b", r"【说明[：:]", r"【注[：:]", r"博士/硕士", r"学术/专业", r"此处(?:补充|填写|插入)", r"待(?:补充|填写|核实|完善)(?:原因|数据|结果|内容|访谈|问卷)?", r"临时演示", r"待真实数据替换"]:
         matches = re.findall(marker, combined)
         if matches:

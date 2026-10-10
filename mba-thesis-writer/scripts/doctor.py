@@ -89,7 +89,7 @@ def inspect(self_test=False):
                 raise ValueError(message)
         try:
             project = workspace / "项目.json"
-            project.write_text(json.dumps({"schema_version": 1, "project": {
+            project.write_text(json.dumps({"schema_version": 2, "project": {
                 "title": "SYNTHETIC self-test", "mode": "topic_to_thesis", "stage": "research_draft"}}, ensure_ascii=False), encoding="utf-8")
             verify(not run("audit_project.py", [project])["errors"], "Draft rejected")
             paragraph = "这是临时安装自检使用的模拟段落，内容用于核验重复扫描是否能够按实际段落运行，不代表任何企业事实或论文结论。" * 2
