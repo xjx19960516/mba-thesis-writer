@@ -1,6 +1,19 @@
-# Local verification and generated artifacts
+# Local release verification; keep published templates and installers tracked.
 audit/
+
+# Python caches, test caches, and local dependency environments.
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Temporary work files and logs.
 *.tmp
 *.log
+
+# Operating-system metadata.
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,6 +1,12 @@
+# Repository documentation uses LF line endings across operating systems.
 * text=auto eol=lf
-# Exact bytes are required by the skill's manifest.json.
+
+# Keep every packaged skill byte unchanged for manifest.json verification.
+# The skill also carries its own .gitattributes for standalone installations.
 mba-thesis-writer/** -text
+
+# Release checksums are plain text; preserve binary templates and installers.
+*.sha256 text eol=lf
 *.pdf binary
 *.docx binary
 *.zip binary
