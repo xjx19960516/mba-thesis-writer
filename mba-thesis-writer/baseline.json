@@ -1,6 +1,6 @@
 {
   "name": "mba-thesis-writer",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "release_date": "2026-10-15",
   "entrypoint": "SKILL.md",
   "project_schema_version": 2,
