@@ -47,6 +47,7 @@
 - `displays[]`：`id, kind, number, title, research_question_id, data_ids, source_ids, first_mention, note, calculation_checked, format_checked`；可加`status`为planned / included，省略或null按included检查；未采用图表须明确标planned。`kind`为table / figure；编号如`3.1`或附录`A.1`，与稳定ID分开。planned为研究计划，可暂缺实际数据和正文首次引用；纳入正文后必须有合格证据。两个checked字段用真实布尔值，不用字符串“true”；完全没有数值核验的定性表/图可将calculation_checked设为not_applicable，并用calculation_note说明原因。图表关联数值或派生数据时应完成相应转录/计算复核，不能以not_applicable跳过；脚本沿数据依赖检查明确数值和calculated记录，字符串形式的数值及表内实际内容仍需审读。
 - `tasks[]`：`id, need, purpose, owner, status, blocking`；任务状态为 open / done / waived；waived另存reason。只有具体理由和可接受替代路径才能 waived，不能把尚未取得的研究结果标完成。
 - 补充材料与修订任务可增加`draft_locations, required_inputs, replacement_rule, acceptance_criteria`及受影响ID，按 [独立补充说明](delivery-contract.md#正文与独立说明)整理给用户。位置优先用章/节、段落首句和表图编号，页码随稿件版本更新；正文不需要保留任务占位语。这些扩展字段用于记录，当前脚本不校验它们的完整性。
+- [二轮完善](delivery-contract.md#补充资料后的二轮完善)沿用已有任务ID和状态。材料已核验、相关分析已更新、正文及关联位置已整合、受影响检查通过后才标`done`，在处理记录写明材料、分析文件、新位置与复核依据；仅收到资料不关闭任务。部分补料先处理已满足的部分，其余任务保持`open`。
 - `qa`：`evidence_semantics, calculations, citations, repetition, academic_style, consistency, docx_structure, visual_pages`。每项为 `{status: pass|pending|not_applicable, evidence: 实际审查记录路径或说明}`。`visual_pages` 另记 rendered_file、checked_pages、total_pages。另记录外部查重报告的来源、日期、覆盖范围；没有报告就不填写查重率。
 
 ## 状态只描述已经完成的工作

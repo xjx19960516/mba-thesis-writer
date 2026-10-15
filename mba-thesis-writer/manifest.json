@@ -7,18 +7,18 @@
     ".gitattributes": "386a09d8d628b05d58c23bdc259bb95eef8c25e566b55569b4ce77c2b742ab4b",
     "agents/openai.yaml": "03663182be2aa6a4d366ccbccb6a546fecca38b8a41f3b84712bac5c9b9c273c",
     "assets/mba-requirements-2024.pdf": "57dbc5bc6e940abefe0378649f2ca29c1fdc6237efcc3a230b5d5ece035316b8",
-    "assets/revision-notes-template.md": "7bc646d7f732c5beb27c36295465f6fdce3db7e875ae520c673f2da87e1c5e02",
+    "assets/revision-notes-template.md": "55cb8b22282a95f21788966521a77355d721dc28e88628d8aec61980d91b26e3",
     "assets/survey-simulation-example.json": "b21ddb610fc8d5fb8a6451d07d507394cde3d17732d16ecab182595d3eb583d4",
     "assets/ustc-format.json": "f70225bba48dbdb4f254bcf1e38d5555ecf358b6187fe9ee7a0b635690bcecff",
     "assets/ustc-thesis-template.docx": "f5bfa013bb82abf6a4fd758da013001d36af4b8c5f651daa237f0c625b31848c",
-    "baseline.json": "f9b8fa9800fa519e64b06250f67996286bc4dfeb29ce83be0b1f3e46d9bab3d7",
-    "README.md": "cbf1fc2b5247f7e4d5bd948d94058b19aa5f13f4200a1846d606d3c90586507a",
-    "references/delivery-contract.md": "f563d150e3efccfdd4f9ba4a042ed996267fb063751cdd131072ebdbb040a7b7",
+    "baseline.json": "6d52e4a2cc7309de134c7ca95261ca5d5ddd7f5e0b1b7e4b4c870665b6299945",
+    "README.md": "06f32cb71f930a8bd74294a1be29b3a96fd454aa6f3bebadb78c3a0e254179e6",
+    "references/delivery-contract.md": "529185691930beb89d47e4297b2d85d0d47b535c62db24a07817b2e4c26a38ac",
     "references/evidence-and-citations.md": "751d4e209719019b9b414f4ada308b23976e2b23cb3d0a81e3c6d891ad47a909",
-    "references/full-thesis-workflow.md": "bbab27c2b45147a92e76dd869223daabdabc52838429b6de3c8b09b60201da4b",
+    "references/full-thesis-workflow.md": "2fe0ff3d436af0d7bfacdf9d0dbb232c1d6bd13c327b9150f0da7079d21a3227",
     "references/installation-and-tools.md": "a7fc6b5f04988efa54f3dbd5f6de136eede62c88b340199262e93cbafe225147",
     "references/national-requirements.md": "c6571312f3b4d0738441063cf9216549528b0ad2083b9af4e615239c4eb9aeff",
-    "references/project-schema.md": "56cbc46e09042b1572b1dc271939740a687d0b253a96ac332461c178e810a1ed",
+    "references/project-schema.md": "b79864bf894d7d3d34f905e9ca9b5acda7787bd77f6e106f922c0de6566bf1ed",
     "references/questionnaire-and-simulation.md": "f62c6044b1aedfcda4bb58b8b86963a326dc01e8d07d41815c438e5fe20f8fdf",
     "references/research-design.md": "b9b75517012b85fc97fa57dd977f7f8c2baf9c49eb27f97b382898d99f9e8261",
     "references/survey-simulator.md": "e25afe325aeca0e3e8f347032b0052bfc0e5b148e0ce1f96ed8d9c392f978016",
@@ -33,6 +33,6 @@
     "scripts/build_table.py": "cb7c99372491a001fd2f5bb35b8fead92b3a3ce295c1f1f3b98a9fdda87134ff",
     "scripts/doctor.py": "49a1ca6be5b6ae5540183b6794ce913d5be158b1a4e25d5d51aa6c40cee8578c",
     "scripts/simulate_survey.py": "897b4197b52420169c876d31b4be66fb34fd7429a7feab6c604d2448696a0f59",
-    "SKILL.md": "490baf3dea7719a5b533a5025eb28414989280c290db1b828d0c43a0871f5193"
+    "SKILL.md": "73a10b4bf8f61287a612bb938b07ce23f0050152203c7830d6e1cd3d74f0f6e9"
   }
 }

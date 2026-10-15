@@ -16,6 +16,7 @@ description: 完成完整、正式的MBA学术论文及其修订与Word定稿，
 | 题目/已通过开题到完整论文 | [全文流程](references/full-thesis-workflow.md) | 依次取证、分析、写齐全文、返修和Word交付 |
 | 选题或研究设计调整 | [研究设计](references/research-design.md) | 问题、理论、方法、数据与成果匹配 |
 | 已有稿/导师意见/润色去重 | [写作与质量](references/writing-and-quality.md) | 定位修改，补实质论证，自然化与去重后回校关联内容 |
+| 按独立说明补充资料后整合定稿 | [二轮完善](references/delivery-contract.md#补充资料后的二轮完善) | 接续最新主稿，核验补料，联动分析与全文，重新验收完整Word |
 | 文献、来源或引用 | [证据与引用](references/evidence-and-citations.md) | 主动检索、来源核验、文献综合与正文—文后闭环 |
 | 问卷或调查结果 | [问卷分析](references/questionnaire-and-simulation.md) | 按资料状态完成工具、真实分析或明确委托的情景任务 |
 | Word、表格或版式 | [Word与图表](references/word-and-tables.md) | 原生表格、学校样式、目录/域更新及逐页验收 |
