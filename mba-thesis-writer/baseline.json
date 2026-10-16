@@ -1,7 +1,7 @@
 {
   "name": "mba-thesis-writer",
-  "version": "1.5.1",
-  "release_date": "2026-10-15",
+  "version": "1.5.2",
+  "release_date": "2026-10-16",
   "entrypoint": "SKILL.md",
   "project_schema_version": 2,
   "compatible_project_schema_versions": [
@@ -30,6 +30,6 @@
   "optional_vendor_metadata": [
     "agents/openai.yaml"
   ],
-  "render_validation": "Representative synthetic table sample using Microsoft Word 16.0; not a complete thesis",
+  "render_validation": "Full-length synthetic MBA teaching-thesis workflow using Microsoft Word 16.0, including first-round DOCX and second-round material integration; actual final-file page checks recorded in the release review",
   "scope": "Portable instruction/resource package; individual harness discovery, tools and permissions remain environment-specific"
 }
