@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import sys
+from types import ModuleType
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -13,8 +14,11 @@ NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 W = "{" + NS["w"] + "}"
 
 
-def audit(path, profile=None, expected_headings=None):
-    report = {"input_sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "errors": [], "warnings": [], "manual_checks": [
+def audit(path, profile=None, expected_headings=None, full_thesis=False, citation_style="numeric"):
+    path = Path(path)
+    if citation_style not in {"numeric", "author_year"}:
+        raise ValueError("citation_style must be numeric or author_year")
+    report = {"input": str(path.resolve()), "input_sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "errors": [], "warnings": [], "manual_checks": [
         "Render and inspect every page: fonts, overflow, table continuation, headings, page numbers",
         "Check effective formatting through defaults, styles and direct overrides",
         "Verify numeric and author-year citations against the source/claim ledger",
@@ -24,7 +28,7 @@ def audit(path, profile=None, expected_headings=None):
         if bad:
             report["errors"].append("Corrupt ZIP entry: " + bad)
         root = ET.fromstring(archive.read("word/document.xml"))
-        styles = ET.fromstring(archive.read("word/styles.xml"))
+        styles = ET.fromstring(archive.read("word/styles.xml")) if "word/styles.xml" in archive.namelist() else ET.Element(W + "styles")
         texts = []
         for name in archive.namelist():
             if name.startswith("word/") and name.endswith(".xml") and not any(x in name for x in ("styles", "numbering", "settings", "fontTable", "theme/")):
@@ -233,7 +237,282 @@ def audit(path, profile=None, expected_headings=None):
             size = s.find("w:rPr/w:sz", NS)
             if name is not None and name.get(W + "val", "").lower() in ("normal", "heading 1", "body text indent") and size is not None:
                 report["warnings"].append({"style_id": sid, "style": name.get(W + "val"), "explicit_size_pt": float(size.get(W + "val")) / 2, "action": "Compare effective role formatting against template instructions"})
+    if full_thesis:
+        _audit_required_content(root, styles, paragraphs, paragraph_texts, levels, in_table, in_textbox,
+                                report, citation_style)
     return report
+
+
+def _audit_required_content(root, styles, paragraphs, texts, levels, in_table, in_textbox, report, citation_style):
+    """Check actual main-story components, never certify their meaning or pagination."""
+    # Import by this script's location: no dependency or caller-cwd assumptions.
+    citation_path = Path(__file__).with_name("audit_citations.py")
+    citations = ModuleType("_thesis_citation_labels")
+    citations.__file__ = str(citation_path)
+    # Source compilation avoids __pycache__ writes without changing caller flags.
+    exec(compile(citation_path.read_bytes(), str(citation_path), "exec"), citations.__dict__)
+    compact = lambda text: re.sub(r"\s+", "", text).casefold()
+    content_size = lambda text: sum(c.isalnum() for c in text)
+    parent_map = {child: parent for parent in root.iter() for child in parent}
+    p_index = {p: i for i, p in enumerate(paragraphs)}
+    def owner(element):
+        while element is not None and element.tag != W + "p":
+            element = parent_map.get(element)
+        return p_index.get(element)
+    style_map = {s.get(W + "styleId"): s for s in styles.findall("w:style", NS)}
+    default_style = next((sid for sid, s in style_map.items() if s.get(W + "type") == "paragraph" and s.get(W + "default") == "1"), None)
+    def style_chain(paragraph):
+        selected = paragraph.find("w:pPr/w:pStyle", NS)
+        sid = selected.get(W + "val") if selected is not None else default_style
+        seen = set()
+        while sid and sid not in seen:
+            seen.add(sid)
+            style = style_map.get(sid)
+            yield sid, style
+            parent = style.find("w:basedOn", NS) if style is not None else None
+            sid = parent.get(W + "val") if parent is not None else None
+    def auto_numbered(i):
+        for element in [paragraphs[i]] + [style for _, style in style_chain(paragraphs[i]) if style is not None]:
+            num = element.find("w:pPr/w:numPr", NS)
+            if num is not None:
+                number = num.find("w:numId", NS)
+                return number is None or number.get(W + "val") != "0"
+        return False
+    eligible = {i for i in range(len(paragraphs)) if not in_table[i] and not in_textbox[i]}
+    toc_rows, toc_fields, cached_rows, listing_rows = set(), [], set(), set()
+    def contents_field(instruction):
+        return not re.search(r"\\[ca](?:\s|$)", instruction, re.I)
+    for i in eligible:
+        for sid, style in style_chain(paragraphs[i]):
+            name = style.find("w:name", NS) if style is not None else None
+            if any(re.fullmatch(r"(?:toc|目录)\d+", compact(value)) for value in [sid, name.get(W + "val", "") if name is not None else ""]):
+                toc_rows.add(i)
+    # Complex TOC fields can span paragraphs and be wrapped in a w:sdt content control.
+    stack = []
+    for element in root.iter():
+        i = owner(element)
+        if element.tag == W + "fldChar":
+            kind = element.get(W + "fldCharType")
+            if kind == "begin":
+                stack.append({"instruction": "", "start": i, "rows": set(), "cached": set(), "result": False})
+            elif kind == "separate" and stack:
+                stack[-1]["result"] = True
+            elif kind == "end" and stack:
+                field = stack.pop()
+                if re.match(r"^\s*TOC(?:\s|$)", field["instruction"], re.I):
+                    toc_rows.update(field["rows"])
+                    if contents_field(field["instruction"]):
+                        toc_fields.append(field)
+                        cached_rows.update(field["cached"])
+                    else:
+                        listing_rows.update(field["rows"])
+        elif element.tag == W + "instrText" and stack and not stack[-1]["result"]:
+            stack[-1]["instruction"] += element.text or ""
+        for field in stack:
+            if i in eligible:
+                field["rows"].add(i)
+                if element.tag == W + "t" and field["result"] and content_size(element.text or ""):
+                    field["cached"].add(i)
+    # fldSimple uses an attribute rather than the begin/separate/end token sequence.
+    for field in root.findall(".//w:fldSimple", NS):
+        if re.match(r"^\s*TOC(?:\s|$)", field.get(W + "instr", ""), re.I):
+            rows = {owner(t) for t in field.findall(".//w:t", NS)} & eligible
+            cached = {owner(t) for t in field.findall(".//w:t", NS) if content_size(t.text or "")} & eligible
+            toc_rows.update(rows)
+            if contents_field(field.get(W + "instr", "")):
+                toc_fields.append({"start": owner(field), "rows": rows, "cached": cached})
+                cached_rows.update(cached)
+            else:
+                listing_rows.update(rows)
+    # An unterminated TOC field is never a validated automatic table of contents.
+    for field in stack:
+        if re.match(r"^\s*TOC(?:\s|$)", field["instruction"], re.I):
+            toc_rows.update(field["rows"])
+            report["manual_checks"].append("Unterminated TOC field: inspect its cached result and field boundaries")
+    headings = {"abstract_zh": {"摘要", "中文摘要"}, "abstract_en": {"abstract", "英文摘要"},
+                "table_of_contents": {"目录", "contents", "tableofcontents"}, "bibliography": {"参考文献", "references", "bibliography"}}
+    def special(i):
+        return next((key for key, titles in headings.items() if compact(texts[i]) in titles), None)
+    keyword_re = {"keywords_zh": re.compile(r"^\s*关\s*键\s*[词字]\s*[：:]?\s*(.*)$", re.I),
+                  "keywords_en": re.compile(r"^\s*key\s*words?\b\s*[：:]?\s*(.*)$", re.I)}
+    def keyword(i):
+        return next(((key, match.group(1)) for key, pattern in keyword_re.items() if (match := pattern.fullmatch(texts[i]))), None)
+    def chapter_heading(i):
+        return bool(re.match(r"^(?:第\s*[一二三四五六七八九十百\d]+\s*章|[1-9]\d*(?:\.[0-9]+)*\s+|introduction\b)", texts[i], re.I))
+    # Recognize manual TOC copies as a region, so their special-title entries cannot
+    # substitute for missing actual abstracts/references. A chapter outline ends it.
+    toc_titles = [i for i in sorted(eligible - toc_rows) if special(i) == "table_of_contents"]
+    listing_titles = [i for i in sorted(eligible - toc_rows) if compact(texts[i]) in {"图表清单", "图表目录", "图目录", "表目录", "插图目录", "表格目录", "图清单", "表清单", "listoffigures", "listoftables"}]
+    manual_rows = set()
+    toc_line = lambda i: bool(re.search(r"(?:\t|[.．·…]{2,}|\s)\s*(?:\d+|[ivxlcdm]+)\s*$", texts[i], re.I)) or any(t.tag == W + "tab" for t in paragraphs[i].iter())
+    for title in toc_titles + listing_titles:
+        if title in toc_titles and any(i > title for i in toc_rows):
+            first = next((i for i in sorted(eligible) if i > title and texts[i]), None)
+            if first in toc_rows:
+                continue
+        for i in sorted(eligible):
+            if i <= title:
+                continue
+            if not texts[i]:
+                if manual_rows and paragraphs[i].find("w:pPr/w:sectPr", NS) is not None:
+                    break
+                continue
+            if special(i) == "table_of_contents" or i in listing_titles:
+                break
+            if levels[i] is not None and special(i) is None and not toc_line(i):
+                break
+            if chapter_heading(i) and not toc_line(i):
+                break
+            manual_rows.add(i)
+            if title in listing_titles:
+                listing_rows.add(i)
+    toc_rows.update(manual_rows)
+    actual = sorted(eligible - toc_rows)
+    required = {}
+    def record(key, indices, status, detail, **counts):
+        required[key] = {"status": status, "location": [f"paragraph:{i + 1}" for i in indices], "detail": detail, **counts}
+        if status in {"missing", "empty"}:
+            report["errors"].append(f"Required full-thesis component {key}: {status}")
+        elif status == "needs_manual_review":
+            report["manual_checks"].append(f"Required component {key}: {detail}")
+    starts = {key: [i for i in actual if special(i) == key] for key in headings}
+    def section_end(start):
+        return next((i for i in actual if i > start and (special(i) is not None or keyword(i) is not None or levels[i] is not None or chapter_heading(i))), len(paragraphs))
+    front_ends = []
+    for key in ["abstract_zh", "abstract_en"]:
+        found = starts[key]
+        if not found:
+            record(key, [], "missing", "No actual main-story abstract heading outside TOC, tables and text boxes")
+            continue
+        content = []
+        for start in found:
+            end = section_end(start)
+            front_ends.append(end - 1)
+            content.extend(i for i in actual if start < i < end and content_size(texts[i]))
+        size = sum(content_size(texts[i]) for i in content)
+        record(key, found, "needs_manual_review" if len(found) > 1 and size else "present" if size else "empty",
+               "Actual abstract text detected; manually compare meaning and numbers across languages" if size else "Heading has no abstract text before the next component/outline heading",
+               characters=size, content_paragraphs=len(content))
+    for key, abstract_key in [("keywords_zh", "abstract_zh"), ("keywords_en", "abstract_en")]:
+        found, payloads = [], []
+        for i in actual:
+            match = keyword(i)
+            if match is None or match[0] != key:
+                continue
+            # A label is not an abstract title, and must be in the front matter.
+            earlier = [start for start in starts[abstract_key] if start < i]
+            if earlier and any(j for j in actual if max(earlier) < j < i and (special(j) is not None or levels[j] is not None or chapter_heading(j))):
+                continue
+            found.append(i)
+            payload = match[1]
+            if not content_size(payload):
+                nxt = next((j for j in actual if j > i and texts[j]), None)
+                if nxt is not None and special(nxt) is None and keyword(nxt) is None and levels[nxt] is None and not chapter_heading(nxt):
+                    payload = texts[nxt]
+                    front_ends.append(nxt)
+            payloads.append(payload)
+            front_ends.append(i)
+        size = sum(content_size(value) for value in payloads)
+        record(key, found, "present" if size else "empty" if found else "missing",
+               "Keyword payload detected; manually compare both language lists" if size else "No nonempty keyword payload after its label", characters=size)
+    toc_content = [i for i in sorted(toc_rows - listing_rows) if any(c.isalpha() for c in texts[i]) and special(i) != "table_of_contents"]
+    # Title text and field instructions alone are not cached entries.
+    cached_content = [i for i in sorted(cached_rows) if any(c.isalpha() for c in texts[i]) and special(i) != "table_of_contents"]
+    locations = toc_titles or [f["start"] for f in toc_fields if f["start"] is not None] or sorted(toc_rows - listing_rows)[:1]
+    toc_status = "present" if toc_fields and cached_content else "needs_manual_review" if toc_content and not toc_fields else "empty" if locations else "missing"
+    record("table_of_contents", locations, toc_status,
+           "Automatic TOC has cached text entries; refresh and inspect displayed titles/page numbers manually" if toc_status == "present" else
+           "Nonempty manual/styled TOC text detected; completeness and page mapping require manual review" if toc_status == "needs_manual_review" else
+           "No cached TOC entries or nonempty manual contents detected", entries=len(cached_content) if toc_fields else len(toc_content))
+    front_ends.extend(toc_rows)
+    front_ends.extend(toc_titles)
+    front_ends.extend(listing_titles)
+    bib_starts = starts["bibliography"]
+    bib_indices = []
+    if bib_starts:
+        start = bib_starts[-1]
+        end = next((i for i in actual if i > start and (special(i) is not None or citations.END.fullmatch(texts[i].strip()) or levels[i] is not None)), len(paragraphs))
+        bib_indices = [i for i in actual if start < i < end and content_size(texts[i])]
+    entries, entry_order, empty_labels, duplicate_labels = {}, [], [], []
+    automatic = any(auto_numbered(i) for i in bib_indices)
+    for pos, i in enumerate(bib_indices):
+        match = citations.ENTRY.match(citations.normalize(texts[i]))
+        if match:
+            number = int(match.group(1))
+            payload = match.group(2)
+            if not content_size(payload) and pos + 1 < len(bib_indices) and not citations.ENTRY.match(citations.normalize(texts[bib_indices[pos + 1]])):
+                payload = texts[bib_indices[pos + 1]]
+            if not content_size(payload):
+                empty_labels.append(number)
+                continue
+            if number in entries:
+                duplicate_labels.append(number)
+            entries[number] = i
+            entry_order.append(number)
+    unlabelled_content = any(not citations.ENTRY.match(citations.normalize(texts[i])) for i in bib_indices)
+    bib_nonempty = bool(entries or unlabelled_content)
+    bib_status = "missing" if not bib_starts else "empty" if not bib_nonempty else "needs_manual_review" if automatic or citation_style == "author_year" or not entries or len(bib_starts) > 1 else "present"
+    record("bibliography", bib_starts, bib_status,
+           "Literal reference labels with nonempty entry text detected" if bib_status == "present" else
+           "Reference text exists; automatic numbering, author-year/unlabelled entries or multiple headings require manual review" if bib_status == "needs_manual_review" else
+           "No actual bibliography heading and nonempty reference entries", entries=len(entries), content_paragraphs=len(bib_indices), empty_labels=empty_labels)
+    # Only main-body rows before the actual bibliography count as body citations.
+    body_start = max(front_ends, default=-1) + 1
+    body_end = min(bib_starts) if bib_starts else len(paragraphs)
+    # Source notes in normal body tables can carry citations; their cells still
+    # cannot serve as the required abstract/TOC/bibliography headings above.
+    body_indices = [i for i in range(len(paragraphs)) if not in_textbox[i] and i not in toc_rows and
+                    body_start <= i < body_end and special(i) is None and keyword(i) is None]
+    usage, first_order, label_errors = {}, [], []
+    for i in body_indices:
+        try:
+            found = citations.labels(citations.normalize(texts[i]))
+        except ValueError as exc:
+            label_errors.append(f"paragraph:{i + 1}: {exc}")
+            continue
+        for number in found:
+            if number not in usage:
+                first_order.append(number)
+            usage.setdefault(number, []).append(i)
+    year_pattern = re.compile(r"[（(][^()（）\n]{1,100}(?:19|20)\d{2}[a-z]?[^()（）\n]*[）)]|[A-Za-z\u4e00-\u9fff][^。！？；;\n]{0,35}[（(](?:19|20)\d{2}[a-z]?[）)]", re.I)
+    indirect = [i for i in body_indices if year_pattern.search(texts[i]) or paragraphs[i].find(".//w:footnoteReference", NS) is not None or paragraphs[i].find(".//w:endnoteReference", NS) is not None or
+                any(re.search(r"\b(?:CITATION|NOTEREF)\b", t.text or "", re.I) for t in paragraphs[i].findall(".//w:instrText", NS)) or
+                any(re.search(r"\b(?:CITATION|NOTEREF)\b", f.get(W + "instr", ""), re.I) for f in paragraphs[i].findall(".//w:fldSimple", NS))]
+    citation_status = "needs_manual_review" if citation_style == "author_year" or (not usage and (indirect or label_errors)) else "present" if usage else "missing"
+    citation_locations = sorted({i for values in usage.values() for i in values})
+    record("body_citations", citation_locations[:8] or indirect[:8], citation_status,
+           "Literal numeric markers detected in the main body; marker meaning and source support require manual review" if citation_status == "present" else
+           "Author-year, notes, citation fields or unsupported labels require manual inspection; body citation coverage is not verified" if citation_status == "needs_manual_review" else
+           "No body citation markers detected before the bibliography; the bibliography list alone does not establish citation use",
+           detected_labels=sorted(usage), location_count=len(citation_locations))
+    if citation_style == "numeric":
+        report["errors"].extend(label_errors)
+        if empty_labels:
+            report["warnings"].append("Bibliography labels without detected entry text: " + ", ".join(map(str, empty_labels)) + "; inspect wrapped entries and complete any empty reference")
+        if duplicate_labels:
+            report["errors"].append("Duplicate bibliography labels: " + ", ".join(map(str, sorted(set(duplicate_labels)))))
+        if entries and not automatic:
+            missing = sorted(set(usage) - set(entries))
+            unused = sorted(set(entries) - set(usage))
+            report["citation_analysis"] = {"style": citation_style, "missing_labels": missing, "unused_labels": unused, "first_use_order": first_order}
+            if missing:
+                report["errors"].append("Cited labels missing from bibliography: " + ", ".join(map(str, missing)))
+            if sorted(entries) != list(range(1, len(entries) + 1)):
+                report["errors"].append("Bibliography labels are not consecutive starting at 1")
+            if entry_order != sorted(entry_order):
+                report["errors"].append("Bibliography entries are not in numeric order")
+            if unused:
+                report["warnings"].append("Bibliography entries without detected body use: " + ", ".join(map(str, unused)))
+            if first_order != sorted(usage):
+                report["warnings"].append("First body use of reference labels is not ascending; inspect grouped citations and notes")
+    report["required_content"] = required
+    report["full_thesis"] = True
+    report["citation_style"] = citation_style
+    report["manual_checks"].extend([
+        "Required-content presence is an OOXML structure/content check; no pagination, whole-standard compliance or research-content quality is certified",
+        "Compare Chinese/English abstract meaning, findings and numbers; compare their keyword lists",
+        "Refresh the table of contents in a field-capable editor and check every displayed title and page number",
+        "Verify each body citation, reference metadata and source/claim semantic support; numeric brackets may have another meaning"])
 
 
 def main():
@@ -243,6 +522,8 @@ def main():
     p.add_argument("input", type=Path)
     p.add_argument("--profile", type=Path)
     p.add_argument("--expect-heading", action="append", default=[], help="Exact displayed paragraph text of an expected outline heading; repeat per chapter")
+    p.add_argument("--full-thesis", action="store_true", help="Require nonempty bilingual abstracts/keywords, TOC, body citations and bibliography for a complete thesis")
+    p.add_argument("--citation-style", choices=["numeric", "author_year"], default="numeric", help="Citation checks in --full-thesis mode; author-year matching remains manual")
     p.add_argument("--out", type=Path)
     args = p.parse_args()
     if args.out and args.out.resolve() == args.input.resolve():
@@ -251,7 +532,7 @@ def main():
         p.error("Output must not overwrite the format profile")
     try:
         profile = json.loads(args.profile.read_text(encoding="utf-8-sig")) if args.profile else None
-        result = audit(args.input, profile, args.expect_heading)
+        result = audit(args.input, profile, args.expect_heading, args.full_thesis, args.citation_style)
         text = json.dumps(result, ensure_ascii=False, indent=2)
         if args.out:
             args.out.write_text(text, encoding="utf-8")

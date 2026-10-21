@@ -1,13 +1,13 @@
 # MBA Thesis Writer
 
-当前最终版：**1.5.3**。面向完整、正式MBA学术论文的研究、分析、写作、学术表达自然化、全文去重及Word定稿技能，可在支持文件读取的agent/harness中使用。
+当前最终版：**1.5.4**。面向完整、正式MBA学术论文的研究、分析、写作、学术表达自然化、全文去重及Word定稿技能，可在支持文件读取的agent/harness中使用。
 
 ## 下载与使用
 
-- [完整安装包](mba-thesis-writer-1.5.3-baseline.zip) · [SHA256](mba-thesis-writer-1.5.3-baseline.zip.sha256)
+- [完整安装包](mba-thesis-writer-1.5.4-baseline.zip) · [SHA256](mba-thesis-writer-1.5.4-baseline.zip.sha256)
 - [使用说明与任务导航](mba-thesis-writer/README.md)
 - [Agent执行入口](mba-thesis-writer/SKILL.md)
-- [本版更新与验证](MBA论文Skill验证说明校正-1.5.3.md)
+- [本版更新与验证](MBA论文Skill必备内容复核-1.5.4.md)
 
 下载后保留完整的`mba-thesis-writer/`目录。根目录同时包含`SKILL.md`、`baseline.json`和`manifest.json`。支持技能机制时按环境加载，其他环境直接读取入口，按任务进入相关参考。详细路径和可选工具见 [安装指南](mba-thesis-writer/references/installation-and-tools.md)。
 
@@ -15,7 +15,7 @@
 
 > 请从 https://github.com/xjx19960516/mba-thesis-writer 下载当前最终版完整技能及SHA256，校验并读取baseline.json确认版本。保留完整目录和隐藏文件，先读SKILL.md，按我的任务加载相关参考。按环境安装或放入可读工作区，保留已有本地修改；有Python时运行scripts/doctor.py --self-test并报告实际结果。我的任务是【论文任务】，资料与成果存放在独立目录【项目目录】。
 
-1.5.3校正模板验证范围的旧说明，沿用完整论文与二轮整合流程；已完成的实测范围和本版校验见复核说明。
+1.5.4将目录、中英文摘要与关键词、正文引用和文后参考文献纳入完整论文定稿必备项复核，并增加可选的全文结构检查模式；实际验证见本版复核说明。
 
 ## 论文交付与二轮完善
 

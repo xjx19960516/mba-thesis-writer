@@ -1,6 +1,6 @@
 # 安装、调用与运行工具
 
-按需阅读：[安装](#安装与调用) · [路径与依赖](#路径和可选运行工具) · [环境与报告](#环境能力与验证记录) · [重复扫描](#文本重复扫描) · [引用扫描](#成稿引用扫描)
+按需阅读：[安装](#安装与调用) · [路径与依赖](#路径和可选运行工具) · [环境与报告](#环境能力与验证记录) · [完整论文必备项](#完整论文必备项检查) · [重复扫描](#文本重复扫描) · [引用扫描](#成稿引用扫描)
 
 ## 安装与调用
 
@@ -36,7 +36,7 @@ python "<技能目录>/scripts/build_table.py" "<项目目录>/table.json" --out
 python "<技能目录>/scripts/audit_docx.py" "<项目目录>/table.docx" --profile "<技能目录>/assets/ustc-format.json" --out "<项目目录>/docx-audit.json"
 python "<技能目录>/scripts/audit_citations.py" "<项目目录>/thesis.docx" --style numeric --out "<项目目录>/citation-audit.json"
 python "<技能目录>/scripts/simulate_survey.py" "<项目目录>/simulation-spec.json" --out-dir "<项目目录>/simulation-v1"
-python "<技能目录>/scripts/audit_docx.py" "<项目目录>/thesis.docx" --expect-heading "问题分析" --expect-heading "结论"
+python "<技能目录>/scripts/audit_docx.py" "<项目目录>/thesis.docx" --full-thesis --citation-style numeric --expect-heading "问题分析" --expect-heading "结论"
 ```
 
 文件输出的父目录须已存在；问卷生成的`--out-dir`指定新的结果目录，由工具创建。输入、配置和报告使用UTF-8，JSON输入兼容UTF-8 BOM。命令可从其他工作目录执行；这些本地工具不执行联网、上传或软件安装。
@@ -68,6 +68,18 @@ python -m pip install -r "<技能目录>/requirements-docx.txt"
 工具检查与来源审读、统计解释及逐页核对配合使用。`audit_project/audit_docx` 返回0表示无结构错误（仍可能有警告）、1表示发现错误、2表示输入/执行错误；`audit_text` 返回0表示扫描完成；表格工具返回0表示文件生成。问卷生成返回0及`simulated_generated`表示已生成配置对应的数据与报告，返回2表示输入/输出错误。`doctor` 返回1表示自检失败，可选能力缺失单独列出。报告使用独立路径，保留原稿与格式配置；文本重复与引用检查要求新的报告路径，避免覆盖其他稿件的检查记录。
 
 本基线实际验证 Windows、本机 Word、路径迁移与无第三方依赖模式；Linux/macOS及各商业agent/harness未逐一实机测试。可移植性来自中立入口、相对资源、标准库工具与可选依赖，各平台以本机自检和实际文件交付记录为准。
+
+## 完整论文必备项检查
+
+完整论文初次及二轮定稿均对最终DOCX执行：
+
+```text
+python "<技能目录>/scripts/audit_docx.py" "<项目目录>/thesis.docx" --full-thesis --citation-style numeric --expect-heading "绪论" --expect-heading "结论" --out "<项目目录>/final-docx-audit.json"
+```
+
+章名替换为实际标题；著者—出版年制将`--citation-style`改为`author_year`。检查中文摘要及关键词、英文摘要及关键词、实际目录条目、正文引用和文后参考文献，缺失或空内容为错误。自动目录读取缓存条目，顺序编码制核对引文编号与文后对应关系；需要人工识别的体例按报告完成核对。普通模式继续用于单章及表格片段。
+
+先处理报告中的具体缺项，再完成 [必备项复核](delivery-contract.md#完整论文必备项复核)中的摘要内容一致性、目录实际页码与引文语义审读。记录各项实际结果，补齐并复核后定稿；工具不自动完成这些内容审读或页面验收。
 
 ## 文本重复扫描
 

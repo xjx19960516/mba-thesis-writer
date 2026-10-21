@@ -11,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -109,6 +111,56 @@ def inspect(self_test=False):
             stats = json.loads((survey_out / "simulated-summary.json").read_text(encoding="utf-8"))
             verify([o["count"] for o in stats["questions"][0]["overall"]["options"]] == [1, 2], "Simulation quotas failed")
             verify(stats["data_origin"] == "SIMULATED", "Simulation provenance missing")
+            # Exercise full-thesis requirements even without optional docx libraries.
+            namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            ET.register_namespace("w", namespace)
+            tag = lambda name: "{" + namespace + "}" + name
+            def thesis_fixture(path, english_text):
+                document_xml = ET.Element(tag("document"))
+                body_xml = ET.SubElement(document_xml, tag("body"))
+                def paragraph(text, style=None):
+                    node = ET.SubElement(body_xml, tag("p"))
+                    if style:
+                        ET.SubElement(ET.SubElement(node, tag("pPr")), tag("pStyle"), {tag("val"): style})
+                    ET.SubElement(ET.SubElement(node, tag("r")), tag("t")).text = text
+                    return node
+                paragraph("摘要", "heading")
+                paragraph("本模拟研究使用教学记录比较服务表现，分析责任接续并形成改进方案。")
+                paragraph("关键词：服务；管理")
+                paragraph("ABSTRACT", "heading")
+                paragraph(english_text)
+                paragraph("KEYWORDS: service; management")
+                paragraph("目录", "heading")
+                toc = paragraph("第1章 绪论\t1", "toc1")
+                for kind, text in [("begin", None), ("instruction", ' TOC \\o "1-3" '), ("separate", None)]:
+                    run_xml = ET.Element(tag("r"))
+                    if kind == "instruction":
+                        ET.SubElement(run_xml, tag("instrText")).text = text
+                    else:
+                        ET.SubElement(run_xml, tag("fldChar"), {tag("fldCharType"): kind})
+                    toc.insert(len(toc) - 1, run_xml)
+                ET.SubElement(ET.SubElement(toc, tag("r")), tag("fldChar"), {tag("fldCharType"): "end"})
+                paragraph("第1章 绪论", "heading")
+                paragraph("This synthetic self-test statement cites its test reference[1].")
+                paragraph("参考文献", "heading")
+                paragraph("[1] SYNTHETIC AUTHOR. Self-test reference[J]. Synthetic Journal, 2026, 1: 1.")
+                styles_xml = ET.Element(tag("styles"))
+                for sid, name, outline in [("heading", "Heading 1", "0"), ("toc1", "TOC 1", None)]:
+                    style_xml = ET.SubElement(styles_xml, tag("style"), {tag("type"): "paragraph", tag("styleId"): sid})
+                    ET.SubElement(style_xml, tag("name"), {tag("val"): name})
+                    if outline is not None:
+                        ET.SubElement(ET.SubElement(style_xml, tag("pPr")), tag("outlineLvl"), {tag("val"): outline})
+                with zipfile.ZipFile(path, "w") as archive:
+                    archive.writestr("word/document.xml", ET.tostring(document_xml, encoding="utf-8"))
+                    archive.writestr("word/styles.xml", ET.tostring(styles_xml, encoding="utf-8"))
+            complete = workspace / "完整性自检.docx"
+            thesis_fixture(complete, "This synthetic teaching study compares service records and develops a management proposal.")
+            result = run("audit_docx.py", [complete, "--full-thesis"])
+            verify(all(item["status"] == "present" for item in result["required_content"].values()), "Required thesis content was not located")
+            incomplete = workspace / "空摘要自检.docx"
+            thesis_fixture(incomplete, "")
+            result = run("audit_docx.py", [incomplete, "--full-thesis"], expected=1)
+            verify(result["required_content"]["abstract_en"]["status"] == "empty", "Empty English abstract was not detected")
             if docx_available:
                 from docx import Document
                 spec = workspace / "表.json"
